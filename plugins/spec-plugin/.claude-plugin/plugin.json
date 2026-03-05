@@ -1,0 +1,12 @@
+{
+  "name": "spec-plugin",
+  "version": "1.0.0",
+  "description": "Spec-driven product development pipeline — from ideation to verified code, orchestrated by AI agents",
+  "author": {
+    "name": "Jaison Erick",
+    "url": "https://github.com/jaisonerick"
+  },
+  "repository": "https://github.com/jaisonerick/spec-plugin",
+  "license": "MIT",
+  "keywords": ["spec-driven", "orchestration", "agents", "pipeline", "ideation", "architecture", "qa"]
+}

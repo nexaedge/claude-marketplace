@@ -16,7 +16,7 @@
         "name": "Jaison Erick",
         "email": "jaison@jaisonerick.com"
       },
-      "source": ".",
+      "source": "./plugins/spec-plugin",
       "category": "development"
     }
   ]
