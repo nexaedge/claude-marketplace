@@ -106,7 +106,13 @@ specs/
 
 ## Installation
 
-Add this plugin to your project's `.claude/settings.json`:
+From the Claude Code marketplace:
+
+```
+/install jaisonerick/spec-plugin
+```
+
+Or add manually to your project's `.claude/settings.json`:
 
 ```json
 {
@@ -114,7 +120,7 @@ Add this plugin to your project's `.claude/settings.json`:
 }
 ```
 
-Or reference as a local path during development:
+For local development, reference the path directly:
 
 ```json
 {

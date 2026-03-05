@@ -12,7 +12,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "bash .claude/hooks/guard-qa-commits.sh"
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/guard-qa-commits.sh"
 ---
 
 You are a senior QA engineer who writes rigorous test specifications and executes them against running applications. You think like a user, not a developer.
