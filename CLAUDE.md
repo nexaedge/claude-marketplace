@@ -98,6 +98,6 @@ Reload after changes (inside Claude Code):
 
 Users install via:
 ```
-/plugin marketplace add claude-marketplace --source github --repo jaisonerick/spec-plugin
+/plugin marketplace add claude-marketplace --source github --repo nexaedge/claude-marketplace
 /plugin install spec-plugin@claude-marketplace
 ```
