@@ -7,6 +7,9 @@ This is a Claude Code **plugin marketplace** repository containing the `spec-plu
 ```
 .claude-plugin/
   marketplace.json          # Marketplace catalog (name, owner, plugin list)
+.github/
+  workflows/
+    bump-version.yml        # Auto-bumps versions on merge to main
 plugins/
   spec-plugin/              # The spec-plugin plugin
     .claude-plugin/
@@ -14,8 +17,8 @@ plugins/
     agents/                 # Agent definitions (.md files)
     skills/                 # Skills (directories with SKILL.md)
     hooks/                  # Hook scripts
-    scripts/                # Support scripts (worktree setup, etc.)
     README.md               # Plugin documentation
+CHANGELOG.md                # Version history (auto-updated by CI)
 README.md                   # Marketplace documentation
 ```
 
@@ -28,9 +31,15 @@ There are two independent versions:
 
 **Do NOT duplicate the plugin version in the marketplace plugins array.** The plugin's own `plugin.json` is the source of truth — the marketplace entry should not set `version` (the manifest always wins silently, so a marketplace version would be ignored anyway).
 
-When bumping versions:
-- Bump marketplace version when: adding/removing plugins, changing marketplace metadata or owner info
-- Bump plugin version when: changing skills, agents, hooks, scripts, or plugin metadata
+**Versions are bumped automatically by CI** (`.github/workflows/bump-version.yml`). On every push to main:
+- If files under `plugins/spec-plugin/` changed → plugin patch version is bumped
+- If files under `.claude-plugin/`, `README.md`, or `CLAUDE.md` changed → marketplace patch version is bumped
+- CHANGELOG.md is updated with the commit message
+- The bump commit includes `[skip-bump]` to prevent infinite loops
+
+For major/minor bumps, edit the version manually and include `[skip-bump]` in the commit message.
+
+**Do NOT bump versions manually in regular commits** — let CI handle it.
 
 ## Marketplace Format Rules
 
@@ -62,8 +71,7 @@ All component directories (`agents/`, `skills/`, `hooks/`, `scripts/`) go at the
 
 - **Skills**: Each skill is a directory under `skills/` containing a `SKILL.md` with YAML frontmatter (`description` required) followed by the skill prompt.
 - **Agents**: Markdown files in `agents/` defining agent roles, tool restrictions, and behavior.
-- **Hooks**: Shell scripts in `hooks/` or a `hooks/hooks.json` for event handlers.
-- **Scripts**: Support scripts in `scripts/` (e.g., worktree setup).
+- **Hooks**: Shell scripts in `hooks/` referenced by agent frontmatter, or a `hooks/hooks.json` for plugin-level event handlers.
 
 ### Plugin caching
 

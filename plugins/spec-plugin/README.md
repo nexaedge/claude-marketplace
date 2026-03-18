@@ -66,8 +66,30 @@ Agents work in isolated git worktrees to avoid conflicts:
 
 1. **Agent definitions** instruct each agent to call `EnterWorktree` before doing any work
 2. **Orchestrate skill** provides worktree names in agent prompts
-3. **PostToolUse hook** on `EnterWorktree` runs `scripts/setup-worktree.sh` if it exists
-4. **Setup script** (optional) copies `.env`, `.tool-versions`, and other gitignored files
+3. **PostToolUse hook** on `EnterWorktree` runs `scripts/setup-worktree.sh` if it exists in your project
+
+The plugin's agent hooks look for `scripts/setup-worktree.sh` in your **project directory** (not the plugin). If the file exists, it runs automatically after `EnterWorktree` to copy gitignored files into the worktree. Create one in your project like this:
+
+```bash
+#!/usr/bin/env bash
+# scripts/setup-worktree.sh — runs via PostToolUse hook on EnterWorktree
+set -euo pipefail
+
+MAIN_REPO=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+WORKTREE_DIR=$(pwd)
+
+[ "$MAIN_REPO" = "$WORKTREE_DIR" ] && exit 0
+
+# Add files that worktrees don't get automatically (gitignored files)
+for f in .env .env.local .tool-versions; do
+  [ -f "$MAIN_REPO/$f" ] && [ ! -f "$WORKTREE_DIR/$f" ] && cp "$MAIN_REPO/$f" "$WORKTREE_DIR/$f"
+done
+
+# Optional: check services are running
+# curl -sf http://localhost:8000/api/health >/dev/null || echo "⚠ Backend not running"
+
+exit 0
+```
 
 ## Specs Directory Convention
 
@@ -93,15 +115,8 @@ The `specs/` directory lives wherever the project lives — repo root, a subdire
 ## Installation
 
 ```
-/install jaisonerick/spec-plugin
-```
-
-Or add to `.claude/settings.json`:
-
-```json
-{
-  "plugins": ["jaisonerick/spec-plugin"]
-}
+/plugin marketplace add spec-plugin --source github --repo jaisonerick/spec-plugin
+/plugin install spec-plugin@spec-plugin
 ```
 
 ## Optional Dependencies
