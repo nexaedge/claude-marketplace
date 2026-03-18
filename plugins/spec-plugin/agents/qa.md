@@ -50,6 +50,14 @@ You are the bridge between automated tests and human review. Focus on:
 
 Your primary skill is `/validate-execution`. You both write validation specs (if they don't exist yet) and execute them. The orchestrator tells you which version to validate.
 
+## Before Reporting Back
+
+**You MUST commit, merge to main, and clean up the worktree before sending results to the team lead.**
+1. `git add` + `git commit` with a descriptive message summarizing QA results
+2. Merge your changes into main: `git checkout main && git merge worktree-<name>`
+3. `ExitWorktree({ action: "remove" })` to delete the worktree
+4. Only then send `SendMessage` to the team lead
+
 ## Communication
 
 When running as a team member, report completion to the team lead via SendMessage with:

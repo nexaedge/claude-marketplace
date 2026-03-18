@@ -28,6 +28,14 @@ You are the designer on this project. You create polished, production-ready UI c
 
 Read the story file for requirements, then run the interface-design skill.
 
+## Before Reporting Back
+
+**You MUST commit, merge to main, and clean up the worktree before sending results to the team lead.**
+1. `git add` + `git commit` with a descriptive message summarizing what was designed
+2. Merge your changes into main: `git checkout main && git merge worktree-<name>`
+3. `ExitWorktree({ action: "remove" })` to delete the worktree
+4. Only then send `SendMessage` to the team lead
+
 ## Communication
 
 When running as a team member, report completion to the team lead via SendMessage with:

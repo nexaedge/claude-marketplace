@@ -157,6 +157,23 @@ Once the human confirms the version is good:
 5. Shut down all agents. `TeamDelete` to clean up.
 6. Suggest: "Run `/run-retrospective <version>` to capture lessons learned. Next version: `<next>` from the roadmap."
 
+## Worktree & Agent Lifecycle Protocol
+
+### Before spawning any agent:
+- **Commit all pending changes on main.** Agents use `EnterWorktree` which creates a worktree from HEAD — uncommitted files won't be visible to them. Run `git status` and commit if needed before every `Agent()` call.
+
+### Agent prompt must include:
+- Instruction to **commit, merge to main, and clean up the worktree before reporting back**. Include this explicitly: "Before reporting back, `git add` + `git commit`, then merge to main with `git checkout main && git merge worktree-<name>`, then call `ExitWorktree({ action: 'remove' })`."
+
+### After each agent completes:
+- Changes are already on main (agent merged before reporting)
+- Worktree is already cleaned up (agent called `ExitWorktree({ action: "remove" })`)
+- **Shut down** the agent immediately via `SendMessage({ to: "<agent-name>", message: { type: "shutdown_request" } })`
+
+Do NOT leave idle agents running between phases. Shut them down as soon as they report back.
+
+Agent lifecycle: `EnterWorktree({ name })` → work → `git commit` → `git checkout main && git merge worktree-<name>` → `ExitWorktree({ action: "remove" })` → `SendMessage` to team lead.
+
 ## Key Principles
 
 1. **Simple cycle**: execute → validate → fix → repeat. That's it.
