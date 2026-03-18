@@ -8,6 +8,11 @@ This project maintains independent sequential versions (`v1`, `v2`, `v3`...):
 
 Versions are bumped automatically by CI on merge to main.
 
+## [Marketplace v2] - 2026-03-18
+
+### Changed
+- fix: use HTTPS URLs for git-subdir plugin sources
+
 ## [Marketplace v1] - 2025-03-18
 
 ### Added
