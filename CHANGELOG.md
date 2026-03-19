@@ -8,6 +8,11 @@ This project maintains independent sequential versions (`v1`, `v2`, `v3`...):
 
 Versions are bumped automatically by CI on merge to main.
 
+## [Marketplace v27] - 2026-03-19
+
+### Changed
+- fix: use url source for repo-root plugins, fix broken marketing-skills entry
+
 ## [Marketplace v26] - 2026-03-19
 
 ### Changed
