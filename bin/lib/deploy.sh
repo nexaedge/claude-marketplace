@@ -238,10 +238,28 @@ deploy() {
         fi
         ;;
       -)
-        [[ $is_installed -eq 0 ]] && continue
-        echo ""
-        echo "→ Uninstalling '$pname' (removed from marketplace)..."
-        claude plugin uninstall "${pname}@nexaedge-marketplace" --scope user 2>/dev/null || true
+        if [[ "$pname" == "${VENDORED_PLUGIN:-}" ]]; then
+          # Check if vendored-skills has any remaining skills
+          local remaining=0
+          local vdir="$MARKETPLACE_ROOT/plugins/$pname/skills"
+          [[ -d "$vdir" ]] && remaining=$(find "$vdir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+
+          if [[ "$remaining" -eq 0 && $is_installed -eq 1 ]]; then
+            echo ""
+            echo "→ No vendored skills remaining, disabling '$pname'..."
+            claude plugin disable "${pname}@nexaedge-marketplace" --scope user 2>/dev/null || true
+            claude plugin uninstall "${pname}@nexaedge-marketplace" --scope user 2>/dev/null || true
+          elif [[ $is_installed -eq 1 ]]; then
+            echo ""
+            echo "→ Updating '$pname'..."
+            claude plugin update "${pname}@nexaedge-marketplace" --scope user 2>/dev/null || true
+          fi
+        else
+          [[ $is_installed -eq 0 ]] && continue
+          echo ""
+          echo "→ Uninstalling '$pname' (removed from marketplace)..."
+          claude plugin uninstall "${pname}@nexaedge-marketplace" --scope user 2>/dev/null || true
+        fi
         ;;
     esac
   done
