@@ -12,7 +12,7 @@ wait_for_idle_ci() {
       --status "$status" --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
 
     if [[ -n "$run_id" ]]; then
-      gh run watch "$run_id" --exit-status || echo "⚠ CI run failed or was skipped"
+      gh run watch "$run_id" --exit-status &>/dev/null || echo "  ⚠ CI run failed"
     fi
   done
 }
@@ -42,7 +42,11 @@ wait_for_bump() {
     --json databaseId --jq '.[0].databaseId')
 
   if [[ -n "$run_id" ]]; then
-    gh run watch "$run_id" --exit-status || echo "⚠ CI run failed or was skipped (may be [skip-bump])"
+    if ! gh run watch "$run_id" --exit-status &>/dev/null; then
+      echo "  ⚠ CI run failed or was skipped"
+    else
+      echo "  ✓ CI bump complete"
+    fi
   fi
 
   echo "→ Pulling CI bump commit..."
@@ -79,11 +83,17 @@ update_local_plugin() {
 }
 
 # Print a deploy summary.
+# Changes are passed as entries with a prefix:
+#   +plugin/skill    skill added
+#   +plugin          plugin added (external)
+#   -plugin/skill    skill removed
+#   -plugin          plugin removed
+#   ~plugin/skill    skill updated
 print_summary() {
   local before_version="$1"
   local after_version="$2"
   shift 2
-  local changed_plugins=("${@+"$@"}")
+  local changes=("${@+"$@"}")
 
   echo ""
   echo "┌─────────────────────────────────────"
@@ -96,14 +106,39 @@ print_summary() {
     echo "│ Marketplace: $after_version (unchanged)"
   fi
 
-  for plugin_name in "${changed_plugins[@]}"; do
+  for entry in "${changes[@]+"${changes[@]}"}"; do
+    local action="${entry:0:1}"
+    local target="${entry:1}"
+    local plugin_name="${target%%/*}"
+    local skill_name=""
+    [[ "$target" == */* ]] && skill_name="${target#*/}"
+
     local version
     version=$(get_plugin_version "$plugin_name")
-    if [[ -d "$MARKETPLACE_ROOT/plugins/$plugin_name" ]]; then
-      echo "│ Plugin $plugin_name: $version"
-    else
-      echo "│ Plugin $plugin_name: removed"
-    fi
+
+    case "$action" in
+      +)
+        if [[ -n "$skill_name" ]]; then
+          echo "│ + $plugin_name/$skill_name (vendored into $plugin_name $version)"
+        else
+          echo "│ + $plugin_name (added)"
+        fi
+        ;;
+      -)
+        if [[ -n "$skill_name" ]]; then
+          echo "│ - $plugin_name/$skill_name (removed)"
+        else
+          echo "│ - $plugin_name (removed)"
+        fi
+        ;;
+      ~)
+        if [[ -n "$skill_name" ]]; then
+          echo "│ ↑ $plugin_name/$skill_name (updated in $plugin_name $version)"
+        else
+          echo "│ ↑ $plugin_name (updated to $version)"
+        fi
+        ;;
+    esac
   done
 
   echo "└─────────────────────────────────────"

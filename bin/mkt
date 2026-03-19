@@ -101,11 +101,16 @@ add_subdir_skill() {
   local skill_name="$1"
   local target_plugin="$2"
 
-  echo "→ Found bare skill '$skill_name' (no plugin wrapper)"
-
   local plugin_name="${target_plugin:-$skill_name}"
-  local plugin_dir="$MARKETPLACE_ROOT/plugins/$plugin_name"
+  local skill_dir="$MARKETPLACE_ROOT/plugins/$plugin_name/skills/$skill_name"
 
+  # Check early before any API calls
+  if [[ -d "$skill_dir" ]]; then
+    echo "→ Skill '$skill_name' already exists in plugin '$plugin_name', nothing to do."
+    exit 0
+  fi
+
+  echo "→ Found bare skill '$skill_name' (no plugin wrapper)"
   echo "→ Vendoring into plugin '$plugin_name'..."
 
   local commit_sha
@@ -120,6 +125,7 @@ add_subdir_skill() {
   fi
 
   ADDED_PLUGIN="$plugin_name"
+  ADDED_SKILL="$skill_name"
 }
 
 # ── Add: repo root with marketplace.json ──────────────────────────────────────
@@ -248,8 +254,9 @@ cmd_add() {
   parse_github_url "$url"
   echo "→ Parsed: owner=$GH_OWNER repo=$GH_REPO ref=${GH_REF:-default} path=${GH_SUBPATH:-root}"
 
-  # ADDED_PLUGIN is set by the add functions when a local plugin is created/modified
+  # Set by add functions when a local plugin/skill is created
   ADDED_PLUGIN=""
+  ADDED_SKILL=""
 
   if [[ -n "$GH_SUBPATH" ]]; then
     detect_and_add_subdir "$target_plugin"
@@ -263,14 +270,18 @@ cmd_add() {
 
   # Deploy
   local -a stage_paths=(".claude-plugin/marketplace.json")
-  local -a deploy_plugins=()
+  local -a deploy_changes=()
 
   if [[ -n "$ADDED_PLUGIN" ]]; then
     stage_paths+=("plugins/")
-    deploy_plugins+=("$ADDED_PLUGIN")
+    if [[ -n "$ADDED_SKILL" ]]; then
+      deploy_changes+=("+$ADDED_PLUGIN/$ADDED_SKILL")
+    else
+      deploy_changes+=("+$ADDED_PLUGIN")
+    fi
   fi
 
-  deploy "feat: add plugin(s) from $GH_OWNER/$GH_REPO" "${stage_paths[@]}" "--" "${deploy_plugins[@]}"
+  deploy "feat: add plugin(s) from $GH_OWNER/$GH_REPO" "${stage_paths[@]}" "--" "${deploy_changes[@]}"
 }
 
 # ── Command: update ───────────────────────────────────────────────────────────
@@ -299,7 +310,7 @@ cmd_update() {
   echo ""
 
   local updated=0 checked=0
-  local -a updated_plugins=()
+  local -a update_changes=()
 
   while IFS= read -r upstream_file; do
     [[ -z "$upstream_file" ]] && continue
@@ -317,12 +328,7 @@ cmd_update() {
 
     if check_and_update_skill "$upstream_file" "$plugin_name" "$skill_name" "$dry_run"; then
       updated=$((updated + 1))
-      # Track unique plugin names
-      local already_tracked=0
-      for p in "${updated_plugins[@]+"${updated_plugins[@]}"}"; do
-        [[ "$p" == "$plugin_name" ]] && already_tracked=1 && break
-      done
-      [[ $already_tracked -eq 0 ]] && updated_plugins+=("$plugin_name")
+      update_changes+=("~$plugin_name/$skill_name")
     fi
 
   done < <(find "$MARKETPLACE_ROOT/plugins" -name '.upstream.json' -type f 2>/dev/null)
@@ -346,7 +352,7 @@ cmd_update() {
     exit 0
   fi
 
-  deploy "feat: update $updated vendored skill(s)" "plugins/" "--" "${updated_plugins[@]}"
+  deploy "feat: update $updated vendored skill(s)" "plugins/" "--" "${update_changes[@]}"
 }
 
 # Check a single vendored skill for updates. Returns 0 if updated, 1 if skipped.
@@ -444,7 +450,14 @@ cmd_remove() {
     fi
   fi
 
-  deploy "feat: remove ${skill_name:-$plugin_name}" "${stage_paths[@]}" "--" "$plugin_name"
+  local change_entry
+  if [[ -n "$skill_name" ]]; then
+    change_entry="-$plugin_name/$skill_name"
+  else
+    change_entry="-$plugin_name"
+  fi
+
+  deploy "feat: remove ${skill_name:-$plugin_name}" "${stage_paths[@]}" "--" "$change_entry"
 }
 
 # ── Command: completions ──────────────────────────────────────────────────────
