@@ -83,7 +83,7 @@ print_summary() {
   local before_version="$1"
   local after_version="$2"
   shift 2
-  local changed_plugins=("$@")
+  local changed_plugins=("${@+"$@"}")
 
   echo ""
   echo "┌─────────────────────────────────────"
@@ -109,35 +109,30 @@ print_summary() {
   echo "└─────────────────────────────────────"
 }
 
-# Full deploy pipeline:
-#   1. Snapshot current state
-#   2. Stage + commit locally
-#   3. Wait for any in-flight CI to finish
-#   4. Rebase on top of latest remote + push
-#   5. Wait for our push's CI bump
-#   6. Update local plugin
-#   7. Print summary
+# Full deploy pipeline.
+# Usage: deploy <commit-message> <stage-paths...> [-- <changed-plugin-names...>]
+# Everything before "--" is a path to git add.
+# Everything after "--" is a plugin name for the summary.
 deploy() {
   local message="$1"
   shift
-  local files=("$@")
 
-  # Snapshot versions before
-  local version_before
-  version_before=$(get_marketplace_version)
-
-  # Detect which local plugins are being changed
+  local -a files=()
   local -a changed_plugins=()
-  for f in "${files[@]}"; do
-    if [[ "$f" == plugins/* || "$f" == "plugins/" ]]; then
-      # Find plugin names from staged changes
-      local plugin_name
-      for d in "$MARKETPLACE_ROOT"/plugins/*/; do
-        [[ -d "$d" ]] && changed_plugins+=("$(basename "$d")")
-      done
-      break
+  local past_separator=0
+
+  for arg in "$@"; do
+    if [[ "$arg" == "--" ]]; then
+      past_separator=1
+    elif [[ $past_separator -eq 1 ]]; then
+      changed_plugins+=("$arg")
+    else
+      files+=("$arg")
     fi
   done
+
+  local version_before
+  version_before=$(get_marketplace_version)
 
   commit_local "$message" "${files[@]}"
   wait_for_idle_ci
@@ -154,5 +149,5 @@ deploy() {
   local version_after
   version_after=$(get_marketplace_version)
 
-  print_summary "$version_before" "$version_after" "${changed_plugins[@]}"
+  print_summary "$version_before" "$version_after" "${changed_plugins[@]+"${changed_plugins[@]}"}"
 }
