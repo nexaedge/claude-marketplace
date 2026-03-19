@@ -121,7 +121,7 @@ add_subdir_skill() {
 
   # Ensure plugin is registered in marketplace
   if ! plugin_exists "$plugin_name"; then
-    add_plugin_entry "$plugin_name" "\"./$plugin_name\""
+    add_plugin_entry "$plugin_name" "\"./plugins/$plugin_name\""
   fi
 
   ADDED_PLUGIN="$plugin_name"

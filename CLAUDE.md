@@ -49,7 +49,7 @@ For manual version changes, include `[skip-bump]` in the commit message.
 
 Required fields: `name`, `owner` (with `name`), `plugins` array.
 
-The marketplace uses `pluginRoot` to set the base directory for local plugin paths. With `"pluginRoot": "./plugins"`, local sources use `"./spec-plugin"` instead of `"./plugins/spec-plugin"`.
+Local plugin sources use paths relative to the repo root (e.g., `"./plugins/spec-plugin"`). Do NOT use `pluginRoot` — Claude Code does not resolve it correctly during plugin installation.
 
 Each plugin entry has only `name` and `source`:
 
@@ -77,7 +77,7 @@ Each plugin entry has only `name` and `source`:
 ```json
 { "name": "my-plugin", "source": "./my-plugin" }
 ```
-Paths resolve relative to `pluginRoot` (which is `./plugins`). Must start with `./`. Cannot use `../`.
+Paths are relative to the repo root. Must start with `./`. Cannot use `../`.
 
 **GitHub repository** — for plugins hosted on GitHub:
 ```json
