@@ -8,6 +8,11 @@ This project maintains independent sequential versions (`v1`, `v2`, `v3`...):
 
 Versions are bumped automatically by CI on merge to main.
 
+## [Plugin: spec-plugin v5] - 2026-03-23
+
+### Changed
+- feat: add multi-repo worktree support for cross-repo orchestration
+
 ## [Marketplace v39] - 2026-03-19
 
 ### Changed
