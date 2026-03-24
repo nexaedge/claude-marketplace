@@ -8,11 +8,12 @@ Your task: validate the version's output and guide the human through final verif
 
 ## Phase 1 — Load Context
 
-1. Read the version spec: `specs/<version>.md` — focus on Definition of Done
-2. Read the version architecture: `specs/<version>/architecture.md`
-3. Read the stories index: `specs/<version>/stories.md`
-4. **Read the project spec** — check **Project Context** for project type
-5. Check if validation specs exist at `specs/<version>/qa/`
+1. **Locate specs.** If the orchestrator specified a specs repo path in your prompt, read specs from there. Otherwise, look for `specs/` in CWD.
+2. Read the version spec: `specs/<version>.md` — focus on Definition of Done
+3. Read the version architecture: `specs/<version>/architecture.md`
+4. Read the stories index: `specs/<version>/stories.md`
+5. **Read the project spec** — check **Project Context** for project type and code repository path
+6. Check if validation specs exist at `specs/<version>/qa/`
 
 ### If no validation specs exist → Write them first (Phase 1B)
 

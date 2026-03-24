@@ -36,18 +36,47 @@ Agent({ subagent_type: "<agent-name>", team_name: "<version>",
 
 Every agent calls `EnterWorktree` first. Provide the worktree name in the prompt. Available types: `architect`, `product-owner`, `engineer`, `designer`, `qa`.
 
-## Phase 0 — Select Version & Assess State
+## Phase 0 — Detect Workspace, Select Version & Assess State
 
-1. If no version argument provided, read `specs/roadmap.md` and ask the user to pick one via `AskUserQuestion`. **Never guess — keep asking until they choose.**
+### Step 0a: Record Base Branch
+
+Record the **current git branch** as `base_branch` (`git branch --show-current`). This is the reference branch for ALL agent work — agents create worktrees from it, compare against it, and merge back to it. **Never hardcode "main"** — use whatever branch is current when `/orchestrate` is invoked.
+
+### Step 0b: Detect Workspace & Locate Specs
+
+Before doing anything else, understand the workspace — the same way `/ideate` does:
+
+1. **Read CLAUDE.md** (project-level and user-level) — learn conventions, folder structure, references to second-brain or external repos.
+2. **Scan the directory** — what's here? Code repo (package.json, Cargo.toml, go.mod)? Document workspace? Organized workspace with project subdirectories?
+3. **Check for existing specs** — does a `specs/` directory exist here, or inside a subdirectory?
+4. **Check parent context** — if this is a subdirectory, what's above?
+
+From this, determine the workspace layout:
+
+- **`specs/` exists in CWD** → you're in a project directory (or single-repo). Record CWD as the specs location. If the Project Context references a separate code repo, record it as `code_repo` (specs-first multi-repo).
+- **CWD is a workspace root** (e.g., second-brain, organized by projects/areas) → look for the project inside subdirectories. Scan for project folders with `specs/` inside them. If the version argument or user context hints at a specific project, match by name. If ambiguous, ask via `AskUserQuestion`.
+- **CWD is a code repository** (has code markers but no `specs/`) → search for an external specs location:
+  a. Check CLAUDE.md for references to a second-brain or specs repository.
+  b. Search there for a folder matching the current project — by directory name, git remote, or project name.
+  c. If found, record `specs_repo` (absolute path), `code_repo` (CWD), and `specs_prefix` (path to specs within the specs repo).
+  d. If not found, ask the user via `AskUserQuestion`.
+
+This determines the **workspace mode**:
+- **Single-repo**: specs and code in the same repo. Agents use `EnterWorktree`.
+- **Specs-first multi-repo**: CWD is the specs/workspace repo, code lives elsewhere. Agents create manual worktrees in the code repo.
+- **Code-first multi-repo**: CWD is the code repo, specs live elsewhere (e.g., second-brain). Agents use `EnterWorktree` for code isolation. Spec changes are committed directly in the specs repo.
+
+### Step 0c: Select Version & Assess State
+
+1. If no version argument provided, read the roadmap (in the specs location) and ask the user to pick one via `AskUserQuestion`. **Never guess — keep asking until they choose.**
 2. Read the version spec. Note the **Definition of Done**.
 3. Check existing state:
-   - `specs/<version>/architecture.md` exists → architecture done
-   - `specs/<version>/stories.md` exists → stories exist
+   - `<version>/architecture.md` exists → architecture done
+   - `<version>/stories.md` exists → stories exist
    - Story files with `## Execution Log` → some stories done
-   - `specs/<version>/qa/` exists → validation specs exist
-4. **Identify the code repository.** Check the project spec's **Project Context** section for a repository path or directory. If the code lives in a different directory than where specs are stored (i.e., a different git repository), record the absolute path as `code_repo`. All agent prompts MUST include this path so agents create worktrees in the correct repository. If unclear, ask the user via `AskUserQuestion`.
-5. Present state to user, confirm starting point.
-6. `TeamCreate({ team_name: "<version>" })`
+   - `<version>/qa/` exists → validation specs exist
+4. Present state to user, confirm starting point.
+5. `TeamCreate({ team_name: "<version>" })`
 
 ## Phase 1 — Architecture
 
@@ -57,12 +86,14 @@ Spawn architect:
 ```
 Agent({ subagent_type: "architect", team_name: "<version>",
         name: "architect",
-        prompt: "Enter worktree 'architect-<version>'.
+        prompt: "Base branch: <base_branch>.
+                 Specs location: <specs path>.
+                 Enter worktree 'architect-<version>'.
                  Run /architect-version <version>.
-                 Version spec: specs/<version>.md.
+                 Version spec: <specs_prefix>/<version>.md.
                  Context: <relevant decisions or preferences>" })
 ```
-On completion: merge worktree → notify user with key decisions.
+On completion: merge worktree → **shut down the architect agent immediately** → notify user with key decisions.
 
 ## Phase 2 — Story Breakdown
 
@@ -72,12 +103,14 @@ Spawn product-owner:
 ```
 Agent({ subagent_type: "product-owner", team_name: "<version>",
         name: "product-owner",
-        prompt: "Enter worktree 'stories-<version>'.
+        prompt: "Base branch: <base_branch>.
+                 Specs location: <specs path>.
+                 Enter worktree 'stories-<version>'.
                  Run /build-stories <version>.
-                 Architecture: specs/<version>/architecture.md.
+                 Architecture: <specs_prefix>/<version>/architecture.md.
                  Key decisions: <summarize 2-3 that affect decomposition>" })
 ```
-On completion: merge worktree → present story list to user → ask to confirm execution order.
+On completion: merge worktree → **shut down the product-owner agent immediately** → present story list to user → ask to confirm execution order.
 
 ## Phase 3 — Execute & Validate Cycle
 
@@ -96,56 +129,86 @@ Read `specs/<version>/stories.md` for pending tasks. Create a task per pending s
 **Dispatch loop** — repeat until all tasks complete:
 1. Find unblocked tasks
 2. Match `subagent_type` to the story's `Agent` field (`engineer` or `designer`)
-3. Spawn agent — adapt prompt based on single-repo vs multi-repo mode:
+3. **CRITICAL: Never reuse an existing agent for a different task.** Every task MUST get a fresh agent. Before spawning, shut down any completed agents that are still running.
+4. Spawn agent — adapt prompt based on workspace mode:
    **Single-repo:**
    ```
    Agent({ subagent_type: "<agent-type>", team_name: "<version>",
            name: "<agent>-N",
-           prompt: "Enter worktree 'task-NNN'.
+           prompt: "Base branch: <base_branch>.
+                    Enter worktree 'task-NNN'.
                     Run /execute-task <task-path>.
                     Context: <prior completions, design outputs, etc.>" })
    ```
-   **Multi-repo (code_repo identified):**
+   **Specs-first multi-repo (CWD is specs repo, code_repo is external):**
    ```
    Agent({ subagent_type: "<agent-type>", team_name: "<version>",
            name: "<agent>-N",
-           prompt: "Code repository: <code_repo>
-                    Create a code worktree: git -C <code_repo> worktree add .claude/worktrees/task-NNN -b worktree-task-NNN
+           prompt: "Base branch: <base_branch>.
+                    Code repository: <code_repo>
+                    Create a code worktree: git -C <code_repo> worktree add .claude/worktrees/task-NNN -b worktree-task-NNN <base_branch>
                     Work from <code_repo>/.claude/worktrees/task-NNN for all code changes.
                     Run /execute-task <task-path>.
-                    Context: <prior completions, design outputs, etc.
-                    Before reporting back: commit code changes, merge to main in code repo, remove code worktree, commit spec updates." })
+                    Context: <prior completions, design outputs, etc.>
+                    Before reporting back: clean commit history, merge to <base_branch> in code repo (fast-forward only), remove code worktree, commit spec updates." })
    ```
-4. On completion: merge worktree → update story status → update `PROGRESS.md`
+   **Code-first multi-repo (CWD is code repo, specs in external repo):**
+   ```
+   Agent({ subagent_type: "<agent-type>", team_name: "<version>",
+           name: "<agent>-N",
+           prompt: "Base branch: <base_branch>.
+                    Specs repo: <specs_repo>.
+                    Enter worktree 'task-NNN'.
+                    Run /execute-task <task-path>.
+                    Context: <prior completions, design outputs, etc.>
+                    Before reporting back: clean commit history, merge to <base_branch> (fast-forward only), commit spec updates in specs repo." })
+   ```
+5. On completion: merge worktree → **shut down the agent immediately** → update story status → update `PROGRESS.md`
 
 Design → Integration pairing: design story runs first, integration story becomes unblocked after merge.
 
 ### Step 2: Validate
 
-Once all tasks are complete (or after a fix round), spawn QA. Adapt prompt based on single-repo vs multi-repo mode:
+Once all tasks are complete (or after a fix round), spawn QA. **Always spawn a fresh QA agent** — never reuse from a previous validation round. Shut down the previous QA agent first if one exists. Adapt prompt based on workspace mode:
 
 **Single-repo:**
 ```
 Agent({ subagent_type: "qa", team_name: "<version>",
-        name: "qa-validate",
-        prompt: "Enter worktree 'validate-<version>'.
+        name: "qa-validate-N",
+        prompt: "Base branch: <base_branch>.
+                 Enter worktree 'validate-<version>'.
                  Run /validate-execution <version>.
-                 Version spec: specs/<version>.md.
+                 Version spec: <specs_prefix>/<version>.md.
                  Definition of Done is the primary validation source.
                  <If re-run: 'This is a re-validation after fixes. Focus only on previously failed test cases.'>" })
 ```
 
-**Multi-repo (code_repo identified):**
+**Specs-first multi-repo (CWD is specs repo, code_repo is external):**
 ```
 Agent({ subagent_type: "qa", team_name: "<version>",
-        name: "qa-validate",
-        prompt: "Code repository: <code_repo>
-                 Create a code worktree: git -C <code_repo> worktree add .claude/worktrees/validate-<version> -b worktree-validate-<version>
+        name: "qa-validate-N",
+        prompt: "Base branch: <base_branch>.
+                 Code repository: <code_repo>
+                 Create a code worktree: git -C <code_repo> worktree add .claude/worktrees/validate-<version> -b worktree-validate-<version> <base_branch>
                  Work from <code_repo>/.claude/worktrees/validate-<version> for all testing.
                  Run /validate-execution <version>.
-                 Version spec: specs/<version>.md.
+                 Version spec: <specs_prefix>/<version>.md.
                  Definition of Done is the primary validation source.
-                 Before reporting back: commit QA results, merge to main in code repo, remove code worktree, commit spec updates.
+                 Before reporting back: commit QA results, merge to <base_branch> in code repo (fast-forward only), remove code worktree, commit spec updates.
+                 <If re-run: 'This is a re-validation after fixes. Focus only on previously failed test cases.'>" })
+```
+
+**Code-first multi-repo (CWD is code repo, specs in external repo):**
+```
+Agent({ subagent_type: "qa", team_name: "<version>",
+        name: "qa-validate-N",
+        prompt: "Base branch: <base_branch>.
+                 Specs repo: <specs_repo>.
+                 Enter worktree 'validate-<version>'.
+                 Run /validate-execution <version>.
+                 Version spec: <specs_prefix>/<version>.md.
+                 Definition of Done is the primary validation source.
+                 Before reporting back: merge to <base_branch> (fast-forward only), commit QA results in specs repo.
                  <If re-run: 'This is a re-validation after fixes. Focus only on previously failed test cases.'>" })
 ```
 
@@ -188,36 +251,65 @@ Once the human confirms the version is good:
 
 ## Worktree & Agent Lifecycle Protocol
 
+### Base Branch
+
+All agents work relative to the `base_branch` recorded in Phase 0. **Every agent prompt MUST include the base branch.** Agents create worktrees from it, merge back to it, and compare against it. Never hardcode "main".
+
 ### Before spawning any agent:
-- **Commit all pending changes on main** in ALL repositories agents will work on. Run `git status` (and `git -C <code_repo> status` if applicable) and commit if needed before every `Agent()` call. Worktrees are created from HEAD — uncommitted files won't be visible.
+- **Commit all pending changes on the base branch** in ALL repositories agents will work on. Run `git status` (and `git -C <code_repo> status` if applicable) and commit if needed before every `Agent()` call. Worktrees are created from HEAD — uncommitted files won't be visible.
 
 ### Single-repo mode (specs and code in the same repo):
-Agent lifecycle: `EnterWorktree({ name })` → work → `git commit` → `git checkout main && git merge worktree-<name>` → `ExitWorktree({ action: "remove" })` → `SendMessage` to team lead.
+Agent lifecycle: `EnterWorktree({ name })` → work → clean up commit history → `git checkout <base_branch> && git merge --ff-only worktree-<name>` → `ExitWorktree({ action: "remove" })` → `SendMessage` to team lead.
 
-### Multi-repo mode (code repo ≠ specs repo):
-When a `code_repo` was identified in Phase 0, agents that modify code must create worktrees in the **code repository** using git commands — `EnterWorktree` only isolates the CWD repo (where specs live), not external repos.
+### Specs-first multi-repo mode (CWD is specs repo, code_repo is external):
+Agents that modify code must create worktrees in the **code repository** using git commands — `EnterWorktree` only isolates the CWD repo (where specs live), not external repos.
 
 Agent prompt must include:
 ```
+Base branch: <base_branch>
 Code repository: <absolute-path-to-code-repo>
 Create a worktree in the code repo before starting:
-  git -C <code_repo> worktree add .claude/worktrees/<name> -b worktree-<name>
+  git -C <code_repo> worktree add .claude/worktrees/<name> -b worktree-<name> <base_branch>
 Work from <code_repo>/.claude/worktrees/<name> for all code changes.
 Before reporting back:
-  1. Commit in the code worktree
-  2. cd <code_repo> && git checkout main && git merge worktree-<name>
+  1. Clean up commit history (squash/rebase to minimal commits)
+  2. cd <code_repo> && git checkout <base_branch> && git pull --rebase && git merge --ff-only worktree-<name>
   3. git worktree remove .claude/worktrees/<name>
   4. Commit any spec changes directly (story status updates, execution logs)
 ```
 
 Spec-only agents (architect, product-owner doing story breakdown) that don't modify code can use `EnterWorktree` as usual — they only write to the specs repo.
 
+### Code-first multi-repo mode (CWD is code repo, specs in external repo):
+Agents use `EnterWorktree` for code isolation (since CWD is the code repo). Spec changes are committed directly in the specs repo.
+
+Agent prompt must include:
+```
+Base branch: <base_branch>
+Specs repo: <absolute-path-to-specs-repo>
+Enter worktree '<name>' for code isolation.
+Before reporting back:
+  1. Clean up commit history (squash/rebase to minimal commits)
+  2. git checkout <base_branch> && git pull --rebase && git merge --ff-only worktree-<name>
+  3. ExitWorktree({ action: "remove" })
+  4. Commit spec changes in the specs repo (story status, execution logs)
+```
+
 ### After each agent completes:
-- Changes are already on main in all repos (agent merged before reporting)
+- Changes are already on the base branch in all repos (agent merged before reporting)
 - Worktrees are already cleaned up
 - **Shut down** the agent immediately via `SendMessage({ to: "<agent-name>", message: { type: "shutdown_request" } })`
 
 Do NOT leave idle agents running between phases. Shut them down as soon as they report back.
+
+### Agent Reuse Policy — NEVER Reuse Agents
+
+**Every task MUST get a fresh agent.** Never send a new task to an existing agent, even if it's the same agent type. The orchestrator must:
+1. Shut down the previous agent (`SendMessage` with `shutdown_request`)
+2. Spawn a new agent with a unique name (e.g., `engineer-1`, `engineer-2`)
+3. Provide full context in the new agent's prompt — don't assume it has prior context
+
+This applies to ALL agents: engineers, designers, QA, architects, product-owners. No exceptions.
 
 ## Key Principles
 
@@ -228,5 +320,7 @@ Do NOT leave idle agents running between phases. Shut them down as soon as they 
 5. **Agent roles in `.claude/agents/`** — orchestrator provides context, not role definitions.
 6. **Merge early** — each completed task merges immediately.
 7. **Resume-friendly** — check existing state to pick up where left off.
-8. **One agent per task** — fresh agents for each task, no reuse.
+8. **One agent per task, always fresh** — NEVER reuse an agent for a different task. Kill the previous agent, spawn a new one. Every task = new agent instance with a unique name.
 9. **User chooses parallelism** — orchestrator recommends, user decides.
+10. **Base branch, not main** — use the branch the user is on, not hardcoded "main".
+11. **Clean commit history** — each agent merges exactly one commit into the base branch via fast-forward.

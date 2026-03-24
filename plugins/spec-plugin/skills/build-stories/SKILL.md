@@ -8,13 +8,14 @@ Your task: break a version into ordered story files, each sized for a single AI 
 
 ## Phase 1 — Load Context
 
-1. Read the version spec: `specs/<version>.md`
-2. Read the version architecture doc: `specs/<version>/architecture.md`
-3. Read the overall architecture: `specs/architecture.md`
-4. Read the roadmap: `specs/roadmap.md`
-5. **Read the project spec** — check **Project Context** for the project type
-6. Scan the existing workspace to understand what's already built/written
-7. Check for any existing stories in `specs/<version>/`
+1. **Locate specs.** If the orchestrator specified a specs location or specs repo in your prompt, use that path. Otherwise, look for `specs/` in CWD.
+2. Read the version spec: `specs/<version>.md`
+3. Read the version architecture doc: `specs/<version>/architecture.md`
+4. Read the overall architecture: `specs/architecture.md`
+5. Read the roadmap: `specs/roadmap.md`
+6. **Read the project spec** — check **Project Context** for the project type and code repository path
+7. Scan the existing workspace (and code repo if specified) to understand what's already built/written
+8. Check for any existing stories in `specs/<version>/`
 
 Pay special attention to the version spec's **Definition of Done** — the final story or stories must directly satisfy these conditions.
 

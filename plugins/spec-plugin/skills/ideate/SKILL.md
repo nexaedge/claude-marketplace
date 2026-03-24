@@ -14,11 +14,13 @@ Before asking the user anything, read the environment:
 2. **Scan the directory** — what's here? Is this a code repo (package.json, Cargo.toml, go.mod)? A document workspace? An empty directory? A project within a larger structure?
 3. **Check for existing specs** — does a `specs/` directory already exist? Are there prior specs?
 4. **Check parent context** — if this is a subdirectory, what's above? (e.g., you might be in `clients/acme/` inside a larger workspace)
+5. **Check for external specs location** — if this is a code repo with no `specs/`, check CLAUDE.md (project and user level) for references to a second-brain, specs repository, or external project management directory. Search that location for a folder matching the current project (by name, git remote, or project name). If found, this is where specs should be read from and written to.
 
 From this, form an initial understanding:
 - **Where am I?** (standalone repo, subdirectory of a larger workspace, empty directory)
 - **What kind of workspace is this?** (code project, document workspace, blank slate)
-- **Where should specs go?** (local `specs/`, or somewhere informed by the workspace structure)
+- **Where should specs go?** (local `specs/`, an external specs repo like a second-brain, or somewhere informed by the workspace structure)
+- **Is this a code-first setup?** (running from a code repo where specs live elsewhere)
 
 Do NOT assume the project type yet — let Phase 2 confirm it.
 
@@ -70,7 +72,8 @@ Adapt questions based on answers — skip what's already clear, dig deeper where
 
 Based on what you've learned, decide where the spec goes:
 
-- **Code repo with no existing specs:** create `specs/<project-name>.md` at the repo root
+- **Code repo with external specs location found** (e.g., second-brain): write specs there, in the project's folder. Include the code repo path in the Project Context so downstream skills know where to find the code.
+- **Code repo with no existing specs and no external location:** create `specs/<project-name>.md` at the repo root
 - **Code repo with existing specs:** add to existing `specs/` directory
 - **Organized workspace:** place specs where the project lives (e.g., `clients/acme/billing-project/specs/spec.md`)
 - **Empty directory:** create `specs/<project-name>.md` — this directory IS the project
@@ -99,6 +102,7 @@ Add a context block at the top of the spec so downstream skills understand the p
 - **Type**: code | business | research | consulting | hybrid
 - **Language**: en | pt-BR | (whatever the workspace convention is)
 - **Location**: where this spec lives relative to the workspace root
+- **Code Repository**: absolute path to the code repo (only if specs and code live in different directories)
 - **Workspace**: brief description of the workspace (e.g., "monorepo with multiple projects", "Rust CLI project", "empty directory")
 - **Stakeholders**: who's involved (if applicable)
 ```

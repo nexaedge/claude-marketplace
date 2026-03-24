@@ -12,9 +12,10 @@ Your task: produce a comprehensive implementation approach document that makes e
    - Argument provided → use as path or search for matching spec
    - `specs/<project-name>.md` in the current directory
    - `specs/spec.md` if only one spec exists
+   - **If no `specs/` locally**: check CLAUDE.md (project and user level) for references to a second-brain or external specs location. Search there for a folder matching the current project (by name, git remote, or project name).
    - If nothing found, tell the user to run `/ideate` first
-2. **Read the spec** — pay attention to the **Project Context** section (type, language, workspace)
-3. If `specs/roadmap.md` exists, read it
+2. **Read the spec** — pay attention to the **Project Context** section (type, language, workspace, code repository)
+3. If `specs/roadmap.md` exists (in the specs location), read it
 4. If any `specs/v*.md` version files exist, skim them
 5. Check if `specs/architecture.md` already exists — if so, ask user whether to redo or revise
 

@@ -10,11 +10,12 @@ Your task: execute ONE task end-to-end, producing output that meets all acceptan
 
 1. Read the task file at the provided path
 2. Determine the version from the path (e.g., `specs/v0.1-core-push/001-...` → v0.1-core-push)
-3. Read the version architecture doc: `specs/<version>/architecture.md`
-4. Read the overall architecture: `specs/architecture.md`
-5. **Read the project spec** — find the main spec in `specs/` and check the **Project Context** section to understand the project type
-6. Scan existing workspace for patterns, conventions, and what's already built/written
-7. Check if the task file already has an `## Execution Log` section — if so, resume from where it left off
+3. **Locate specs.** If the orchestrator specified a specs repo path in your prompt, read specs from there. Otherwise, look for `specs/` in CWD.
+4. Read the version architecture doc: `specs/<version>/architecture.md`
+5. Read the overall architecture: `specs/architecture.md`
+6. **Read the project spec** — find the main spec in `specs/` and check the **Project Context** section to understand the project type and code repository path
+7. Scan existing workspace (and code repo if separate) for patterns, conventions, and what's already built/written
+8. Check if the task file already has an `## Execution Log` section — if so, resume from where it left off
 
 ### Project Type Detection
 

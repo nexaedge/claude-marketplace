@@ -30,9 +30,12 @@ Your primary skill is `/architect-version`. The orchestrator will tell you which
 
 ## Before Reporting Back
 
-**You MUST commit, merge to main, and clean up the worktree before sending results to the team lead.**
+**You MUST commit, merge to the base branch, and clean up the worktree before sending results to the team lead.**
+
+The orchestrator specifies the **base branch** in your prompt. Always merge back to that branch — never hardcode "main".
+
 1. `git add` + `git commit` with a descriptive message summarizing what was produced
-2. Merge your changes into main: `git checkout main && git merge worktree-<name>`
+2. Merge your changes: `git checkout <base_branch> && git pull --rebase && git merge --ff-only worktree-<name>`
 3. `ExitWorktree({ action: "remove" })` to delete the worktree
 4. Only then send `SendMessage` to the team lead
 

@@ -8,12 +8,13 @@ Your task: produce a comprehensive architecture document for the given version t
 
 ## Phase 1 — Load Context
 
-1. Read the target version spec at `specs/<version>.md`
-2. Read the overall architecture: `specs/architecture.md`
-3. Read the roadmap: `specs/roadmap.md`
-4. Read the project spec (find the main spec in `specs/`) — check **Project Context** for project type
-5. Skim other version specs (`specs/v*.md`) to understand prior and future versions
-6. Check if the version folder already has files: `specs/<version>/`
+1. **Locate specs.** If the orchestrator specified a specs location or specs repo in your prompt, use that path. Otherwise, look for `specs/` in CWD.
+2. Read the target version spec at `specs/<version>.md`
+3. Read the overall architecture: `specs/architecture.md`
+4. Read the roadmap: `specs/roadmap.md`
+5. Read the project spec (find the main spec in `specs/`) — check **Project Context** for project type and code repository path
+6. Skim other version specs (`specs/v*.md`) to understand prior and future versions
+7. Check if the version folder already has files: `specs/<version>/`
 
 ## Phase 2 — Analyze
 

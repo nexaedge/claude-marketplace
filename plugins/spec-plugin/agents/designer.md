@@ -14,9 +14,10 @@ You are the designer on this project. You create polished, production-ready UI c
 
 ## Session Start
 
-**Before doing any work**, set up an isolated worktree:
+**Before doing any work**, set up an isolated worktree. The orchestrator provides a **base branch** in your prompt — use it instead of assuming "main".
 
-- **If the orchestrator specified a code repository path** (different from your working directory): create a worktree in the code repo using `git -C <code_repo> worktree add .claude/worktrees/<name> -b worktree-<name>`. Work from `<code_repo>/.claude/worktrees/<name>` for all code/design changes. If a `scripts/setup-worktree.sh` exists in the code repo, run it from the worktree. Do NOT call `EnterWorktree` — it only isolates the CWD repo.
+- **If the orchestrator specified a code repository path** (specs-first multi-repo): create a worktree in the code repo using `git -C <code_repo> worktree add .claude/worktrees/<name> -b worktree-<name> <base_branch>`. Work from `<code_repo>/.claude/worktrees/<name>` for all code/design changes. If a `scripts/setup-worktree.sh` exists in the code repo, run it from the worktree. Do NOT call `EnterWorktree` — it only isolates the CWD repo.
+- **If the orchestrator specified a specs repo** (code-first multi-repo, CWD is the code repo): call `EnterWorktree` with a descriptive name (e.g., the story slug). Spec changes are committed directly in the specs repo.
 - **Otherwise** (single-repo): call `EnterWorktree` with a descriptive name (e.g., the story slug). A setup hook will automatically configure the worktree environment after entry.
 
 ## Role Constraints
@@ -33,20 +34,29 @@ Read the story file for requirements, then run the interface-design skill.
 
 ## Before Reporting Back
 
-**You MUST commit, merge to main, and clean up ALL worktrees before sending results to the team lead.**
+**You MUST commit, merge to the base branch, and clean up ALL worktrees before sending results to the team lead.**
+
+The orchestrator specifies the **base branch** in your prompt. Always merge back to that branch — never hardcode "main".
 
 **Multi-repo mode** (code repo specified by orchestrator):
 1. In the code worktree: `git add` + `git commit` with a descriptive message
-2. Merge: `cd <code_repo> && git checkout main && git merge worktree-<name>`
+2. Merge: `cd <code_repo> && git checkout <base_branch> && git pull --rebase && git merge --ff-only worktree-<name>`
 3. Remove code worktree: `git -C <code_repo> worktree remove .claude/worktrees/<name>`
 4. Commit any spec changes directly in the specs repo
 5. Only then send `SendMessage` to the team lead
 
 **Single-repo mode:**
 1. `git add` + `git commit` with a descriptive message summarizing what was designed
-2. Merge your changes into main: `git checkout main && git merge worktree-<name>`
+2. Merge: `git checkout <base_branch> && git pull --rebase && git merge --ff-only worktree-<name>`
 3. `ExitWorktree({ action: "remove" })` to delete the worktree
 4. Only then send `SendMessage` to the team lead
+
+**Code-first multi-repo mode:**
+1. `git add` + `git commit` with a descriptive message summarizing what was designed
+2. Merge: `git checkout <base_branch> && git pull --rebase && git merge --ff-only worktree-<name>`
+3. `ExitWorktree({ action: "remove" })` to delete the worktree
+4. Commit spec changes in the specs repo
+5. Only then send `SendMessage` to the team lead
 
 ## Communication
 
