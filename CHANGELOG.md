@@ -8,6 +8,11 @@ This project maintains independent sequential versions (`v1`, `v2`, `v3`...):
 
 Versions are bumped automatically by CI on merge to main.
 
+## [Plugin: spec-plugin v7] - 2026-04-13
+
+### Changed
+- fix(orchestrate): require version architecture for PO, verify HEAD before spawning, worktree env setup
+
 ## [Plugin: vendored-skills v4] - 2026-04-02
 
 ### Changed
